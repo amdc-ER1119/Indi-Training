@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-title" content="Indi-Training">
 <title>Indi-Training</title>
 <style>
 :root{--bg:#f2f6f7;--card:#fff;--ink:#14262b;--mute:#5d7378;--line:#d5e0e3;--acc:#0b7a75;--accink:#fff;--warn:#b4472f;
@@ -43,14 +45,15 @@ button{cursor:pointer}
 #g{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);overflow:auto}
 .gi{width:100%;max-width:520px;text-align:center}.seg{display:flex;gap:6px;margin:22px 0 6px}.seg span{flex:1;height:6px;background:var(--line);border-radius:3px}.seg span i{display:block;height:100%;width:0;background:var(--acc);border-radius:3px}.seg span.cur{outline:1px solid var(--acc);outline-offset:3px}
 .gl{font-size:44px;font-weight:700;color:var(--acc);margin:10px 0}
-.gc{font-size:96px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.gc{font-size:52px;font-weight:600;color:var(--mute);font-variant-numeric:tabular-nums;line-height:1;min-height:0}
 .bar{height:8px;background:var(--line);border-radius:4px;margin:18px 0 8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc);width:0}
 </style>
 </head>
 <body>
 <main>
-<h1>Knie-Training</h1>
+<h1>Indi-Training</h1>
 <p class="sub" id="date"></p>
+<div id="warn" class="card" style="display:none;border-color:var(--warn);color:var(--warn)">Speichern ist in diesem Browser nicht möglich (z. B. privater Modus). Deine Einträge gehen beim Schließen verloren.</div>
 <nav id="nav"></nav>
 <div id="view"></div>
 </main>
@@ -58,7 +61,7 @@ button{cursor:pointer}
 <script>
 const K='knie-training-v1';
 const DEF=()=>[
- {id:'a',name:'Kniebeugen (flach, bis ca. 60°)',sets:3,reps:12,hold:0,rest:60,t1:3,t2:1,t3:2,l1:'Runter',l2:'Hoch'},
+ {id:'a',name:'Kniebeugen (flach, bis ca. 60°)',sets:3,reps:12,hold:0,rest:60,t1:3,t2:0,t3:1,l1:'Runter',l2:'Hoch'},
  {id:'b',name:'Einbeinstand (pro Seite)',sets:3,reps:1,hold:30,rest:30,t1:2,t2:0,t3:2,l1:'Hoch',l2:'Runter'},
  {id:'c',name:'Zehenspitzenstand',sets:3,reps:12,hold:0,rest:45,t1:3,t2:1,t3:3,l1:'Hoch',l2:'Runter'},
  {id:'d',name:'Fersenstand',sets:3,reps:12,hold:0,rest:45,t1:3,t2:1,t3:3,l1:'Hoch',l2:'Runter'},
@@ -66,8 +69,13 @@ const DEF=()=>[
 let S=null;
 try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
 if(!S||!S.ex)S={ex:DEF(),log:{}};
+if(!S.v||S.v<2){const a=S.ex.find(e=>e.id==='a');if(a&&a.t1===3&&a.t2===1&&a.t3===2){a.t2=0;a.t3=1}S.v=2}
+S.mode=S.mode||'seq';
+function warn(){const w=document.getElementById('warn');if(w)w.style.display='block'}
+try{localStorage.setItem('_t','1');localStorage.removeItem('_t')}catch(e){setTimeout(warn,0)}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 let tab='heute';
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){warn()}};
 const today=()=>new Date().toLocaleDateString('sv');
 const L=d=>S.log[d]||(S.log[d]={done:{},pain:'',swell:'',note:''});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -98,7 +106,7 @@ function render(){
 }
 function viewToday(){const l=L(today());
  if(!S.ex.length)return '<div class="card">Noch keine Übungen. Lege sie unter „Übungen“ an.</div>';
- let h=`<button class="btn fill" style="width:100%;margin-bottom:12px;padding:14px" onclick="startG()">Gesamtdurchlauf starten (ca. ${estMin()} min)</button>`+S.ex.map((e,xi)=>{const n=l.done[e.id]||0;
+ let h=`<div class="chips" style="margin-bottom:10px"><button class="${S.mode==='seq'?'on':''}" onclick="setMode('seq')">Nacheinander</button><button class="${S.mode==='circ'?'on':''}" onclick="setMode('circ')">Im Kreis</button></div><button class="btn fill" style="width:100%;margin-bottom:12px;padding:14px" onclick="startG()">Gesamtdurchlauf starten (ca. ${estMin()} min)</button>`+S.ex.map((e,xi)=>{const n=l.done[e.id]||0;
   const meta=e.hold>0?`${e.sets} × ${e.hold} s halten`:`${e.sets} × ${e.reps} Wiederholungen`;
   let s='';for(let i=0;i<e.sets;i++)s+=`<button class="set ${i<n?'d':''}" onclick="tapSet('${e.id}',${i})" aria-label="Satz ${i+1}">${i+1}</button>`;
   return `<div class="card"><h2>${esc(e.name)}</h2><p class="meta">${meta}${e.rest?`, Pause ${e.rest} s`:''}</p><div class="sets">${s}</div><button class="btn fill" onclick="startG(${xi})">Übung starten</button></div>`}).join('');
@@ -115,7 +123,7 @@ function viewEx(){
  <div><label>Pause (s)</label><input type="number" inputmode="numeric" min="0" value="${e.rest}" onchange="upd('${e.id}','rest',this.value)"></div></div>
  <label>Tempo in Sekunden: Phase 1, Halten, Phase 2</label><div class="row"><div><input type="number" inputmode="numeric" min="0" value="${e.t1??2}" onchange="upd('${e.id}','t1',this.value)"></div><div><input type="number" inputmode="numeric" min="0" value="${e.t2??0}" onchange="upd('${e.id}','t2',this.value)"></div><div><input type="number" inputmode="numeric" min="0" value="${e.t3??2}" onchange="upd('${e.id}','t3',this.value)"></div></div>
  <div class="row"><div><label>Name Phase 1</label><input value="${esc(e.l1||'Hoch')}" onchange="upd('${e.id}','l1',this.value)"></div><div><label>Name Phase 2</label><input value="${esc(e.l2||'Runter')}" onchange="upd('${e.id}','l2',this.value)"></div></div>
- <label>Ton im Durchlauf</label><select onchange="upd('${e.id}','snd',this.value);render()">${[['click','Klick'],['wood','Holzklopfer'],['soft','Weicher Ton'],['file','Eigene Datei (bei jedem Klick)'],['music','Eigene Musik (läuft durch)'],['none','Ganz stumm']].map(([k,t])=>`<option value="${k}" ${(e.snd||'click')===k?'selected':''}>${t}</option>`).join('')}</select>
+ <label>Ton im Durchlauf</label><select onchange="upd('${e.id}','snd',this.value);render()">${[['click','Klick'],['wood','Holzklopfer'],['soft','Weicher Ton'],['file','Eigene Datei (bei jedem Klick)'],['music','Eigene Musik (läuft durch)'],['none','Ganz stumm']].map(([k,t])=>`<option value="${k}" ${(e.snd||'soft')===k?'selected':''}>${t}</option>`).join('')}</select>
  <label>Lautstärke</label><input type="range" min="0" max="100" value="${e.vol??40}" oninput="upd('${e.id}','vol',this.value)">
  ${(e.snd==='file'||e.snd==='music')?`<label>Audiodatei${e.fname?': '+esc(e.fname):' (noch keine gewählt)'}</label><input type="file" accept="audio/*" onchange="upFile('${e.id}',this)">`:''}
  <p><button class="btn" onclick="testSnd('${e.id}')">Ton testen</button> <button class="btn del" onclick="delEx('${e.id}')">Löschen</button></p></div>`).join('');
@@ -126,7 +134,17 @@ function upd(id,f,val){const e=S.ex.find(x=>x.id===id);
 function addEx(){S.ex.push({id:'x'+Date.now(),name:'Neue Übung',sets:3,reps:10,hold:0,rest:45,t1:2,t2:1,t3:2,l1:'Hoch',l2:'Runter'});save();render()}
 function delEx(id){if(confirm('Übung löschen?')){S.ex=S.ex.filter(e=>e.id!==id);fdel(id);save();render()}}
 function resetEx(){if(confirm('Deine Übungsliste durch die Standardübungen ersetzen?')){S.ex=DEF();save();render()}}
-function viewHist(){
+function setMode(m){S.mode=m;save();render()}
+function exportD(){const c=JSON.parse(JSON.stringify(S));c.ex.forEach(e=>delete e.fname);
+ const b=new Blob([JSON.stringify(c)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(b);a.download='indi-training-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+function importD(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.ex)||typeof d.log!=='object'||!d.log)throw 0;
+  if(!confirm('Aktuelle Daten durch die Datei ersetzen?'))return;
+  S={ex:d.ex,log:d.log,mode:d.mode||'seq',v:2};save();render()}catch(e){alert('Die Datei ist keine gültige Sicherung.')}};
+ r.readAsText(f)}
+function viewHist(){return viewHistList()+`<div class="card"><h2>Daten sichern</h2><p class="meta">Alles liegt nur auf diesem Gerät. Im privaten Modus oder nach dem Löschen der Website-Daten gehen die Einträge verloren. Sichere sie deshalb regelmäßig (ohne Sounddateien).</p><p><button class="btn fill" onclick="exportD()">Daten sichern (Datei)</button></p><label>Daten laden</label><input type="file" accept=".json,application/json" onchange="importD(this)"></div>`}
+function viewHistList(){
  const days=Object.keys(S.log).sort().reverse().slice(0,21);
  if(!days.length)return '<div class="card">Noch keine Einträge. Hake Sätze unter „Heute“ ab.</div>';
  return days.map(d=>{const l=S.log[d],sn=l.snap||{};
@@ -141,16 +159,21 @@ function mark(e,n){const l=L(today());l.done[e.id]=n;l.snap=l.snap||{};l.snap[e.
 function buildSteps(only){
  const st=[],add=o=>{if(o.d>0||o.k==='wait')st.push(o)};
  const xs=only==null?S.ex.map((_,i)=>i):[only];
- xs.forEach((xi,n)=>{const e=S.ex[xi];
+ const one=(xi,s)=>{const e=S.ex[xi];
+  if(e.hold>0)add({k:'hold',d:e.hold,xi,s,q:1,label:'Halten'});
+  else{let t=tp(e);if(!(t[0]+t[1]+t[2]))t=[2,0,2];
+   for(let r=0;r<e.reps;r++){add({k:'p',d:t[0],xi,s,r,q:0,label:e.l1||'Hoch'});add({k:'p',d:t[1],xi,s,r,q:1,label:'Halten'});add({k:'p',d:t[2],xi,s,r,q:2,label:e.l2||'Runter'})}}
+  if(st.length)st[st.length-1].end=true};
+ if(only==null&&S.mode==='circ'){
+  const mx=Math.max(...S.ex.map(e=>e.sets));
+  for(let s=0;s<mx;s++){const act=xs.filter(x=>S.ex[x].sets>s);
+   act.forEach((xi,n)=>{add({k:'prep',d:s===0&&n===0?3:5,xi,label:'Bereit'});one(xi,s)});
+   if(s<mx-1)add({k:'rest',d:Math.max(...act.map(x=>S.ex[x].rest)),xi:act[act.length-1],s,rd:s,label:'Pause',next:'Als Nächstes: Runde '+(s+2)})}
+ }else xs.forEach((xi,n)=>{const e=S.ex[xi];
   if(n>0)add({k:'wait',d:0,xi,label:'Nächste Übung'});
   add({k:'prep',d:3,xi,label:'Bereit'});
-  for(let s=0;s<e.sets;s++){
-   if(e.hold>0)add({k:'hold',d:e.hold,xi,s,q:1,label:'Halten'});
-   else{let t=tp(e);if(!(t[0]+t[1]+t[2]))t=[2,0,2];
-    for(let r=0;r<e.reps;r++){add({k:'p',d:t[0],xi,s,r,q:0,label:e.l1||'Hoch'});add({k:'p',d:t[1],xi,s,r,q:1,label:'Halten'});add({k:'p',d:t[2],xi,s,r,q:2,label:e.l2||'Runter'})}}
-   st[st.length-1].end=true;
-   if(s<e.sets-1&&e.rest>0)add({k:'rest',d:e.rest,xi,s,label:'Pause',next:'Als Nächstes: Satz '+(s+2)});
-  }});
+  for(let s=0;s<e.sets;s++){one(xi,s);
+   if(s<e.sets-1&&e.rest>0)add({k:'rest',d:e.rest,xi,s,label:'Pause',next:'Als Nächstes: Satz '+(s+2)})}});
  return st}
 const estMin=()=>Math.max(1,Math.round(buildSteps().reduce((a,s)=>a+s.d,0)/60));
 const P={click:{f:[1500,700,1100],t:1000,type:'sine',d:.06,td:.03},wood:{f:[900,500,700],t:600,type:'triangle',d:.1,td:.05},soft:{f:[660,392,523],t:440,type:'sine',d:.25,td:.12}};
@@ -161,7 +184,7 @@ function unlockAudio(){
  try{if(!sil){sil=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');sil.loop=true}sil.play().catch(()=>{})}catch(e){}}
 function tone(f,type,v,d){try{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(Math.max(v,.0002),ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 function play(buf,v){try{const o=ac.createBufferSource(),g=ac.createGain();o.buffer=buf;g.gain.value=v;o.connect(g);g.connect(ac.destination);o.start()}catch(e){}}
-function cue(e,acc,q){const m=e.snd||'click',v=(e.vol??40)/100;
+function cue(e,acc,q){const m=e.snd||'soft',v=(e.vol??40)/100;
  if(m==='none'||m==='music')return;
  if(m==='file'){const b=G&&G.bufs[e.id];if(b)play(b,acc?v:v*.5);return}
  const p=P[m]||P.click;
@@ -174,7 +197,7 @@ async function upFile(id,inp){const f=inp.files[0];if(!f)return;
  if(f.size>40*1024*1024){alert('Die Datei ist zu groß (max. 40 MB).');return}
  try{await fput(id,{blob:f,name:f.name});S.ex.find(e=>e.id===id).fname=f.name;save();render()}
  catch(e){alert('Die Datei konnte nicht gespeichert werden (evtl. privater Modus im Browser).')}}
-async function testSnd(id){unlockAudio();const e=S.ex.find(x=>x.id===id),m=e.snd||'click',v=(e.vol??40)/100;
+async function testSnd(id){unlockAudio();const e=S.ex.find(x=>x.id===id),m=e.snd||'soft',v=(e.vol??40)/100;
  if(m==='none')return;
  if(P[m]||m==='click'){cue(e,false,0);setTimeout(()=>cue(e,true,0),350);setTimeout(()=>cue(e,true,1),700);setTimeout(()=>cue(e,true,2),1050);return}
  const r=await fget(id).catch(()=>null);if(!r){alert('Noch keine Datei gewählt.');return}
@@ -196,15 +219,16 @@ function musicSync(){if(!G)return;const s=G.st[G.i],e=S.ex[s.xi];
 async function startG(only){if(!S.ex.length)return;stopT();unlockAudio();
  const xs=only==null?S.ex.map((_,i)=>i):[only];
  const f=await loadFiles(xs);
- G={st:buildSteps(only),xs,i:0,t0:performance.now(),last:-1,pz:false,pe:0,bufs:f.bufs,urls:f.urls,mus:null,musId:null,fin:false};
+ const circ=only==null&&S.mode==='circ';
+ G={st:buildSteps(only),xs,circ,i:0,t0:performance.now(),last:-1,pz:false,pe:0,bufs:f.bufs,urls:f.urls,mus:null,musId:null,fin:false};
  try{navigator.wakeLock.request('screen').then(x=>{wl=x}).catch(()=>{})}catch(e){}
  const d=document.createElement('div');d.id='g';
- d.innerHTML=`<div class="gi"><div id="gx" class="meta"></div><h2 id="gn"></h2><div id="gl" class="gl"></div><div id="gseg" class="seg">${xs.map(()=>'<span><i></i></span>').join('')}</div><div id="gs" class="meta"></div><button id="gw" class="btn fill" style="width:100%;margin-top:16px;padding:14px;display:none" onclick="gNext()">Übung starten</button><div class="row" style="margin-top:18px"><div><button class="btn" style="width:100%" id="gp" onclick="gPause()">Pause</button></div><div><button class="btn" style="width:100%" onclick="gSkip()">Übung überspringen</button></div></div><p><button class="btn del" style="width:100%" onclick="gEnd()">Beenden</button></p></div>`;
+ d.innerHTML=`<div class="gi"><div id="gx" class="meta"></div><h2 id="gn"></h2><div id="gl" class="gl"></div><div id="gc" class="gc"></div><div id="gseg" class="seg">${xs.map(()=>'<span><i></i></span>').join('')}</div><div id="gs" class="meta"></div><button id="gw" class="btn fill" style="width:100%;margin-top:16px;padding:14px;display:none" onclick="gNext()">Übung starten</button><div class="row" style="margin-top:18px"><div><button class="btn" style="width:100%" id="gp" onclick="gPause()">Pause</button></div><div><button class="btn" style="width:100%" onclick="gSkip()">${circ?'Satz':'Übung'} überspringen</button></div></div><p><button class="btn del" style="width:100%" onclick="gEnd()">Beenden</button></p></div>`;
  document.body.appendChild(d);G.h=setInterval(gtick,100);drawG()}
 function drawG(){const s=G.st[G.i],e=S.ex[s.xi],q=id=>document.getElementById(id),w=s.k==='wait';
- q('gn').textContent=e.name;
- q('gx').textContent=`Übung ${G.xs.indexOf(s.xi)+1}/${G.xs.length}`+(s.s!==undefined?` · Satz ${s.s+1}/${e.sets}`+(s.k==='rest'?' geschafft':(s.r!==undefined?` · Wdh. ${s.r+1}/${e.reps}`:'')):'');
- q('gl').textContent=s.label;q('gs').textContent=s.next||'';
+ q('gn').textContent=s.rd!==undefined?'Runde '+(s.rd+1)+' geschafft':e.name;
+ q('gx').textContent=s.rd!==undefined?'':`Übung ${G.xs.indexOf(s.xi)+1}/${G.xs.length}`+(s.s!==undefined?` · Satz ${s.s+1}/${e.sets}`+(s.k==='rest'?' geschafft':(s.r!==undefined?` · Wdh. ${s.r+1}/${e.reps}`:'')):'');
+ q('gl').textContent=s.label;q('gs').textContent=s.next||'';q('gc').textContent=s.k==='rest'?s.d:'';
  q('gw').style.display=w?'block':'none';q('gp').style.visibility=w?'hidden':'visible';
  G.xs.forEach((x,n)=>{const all=G.st.filter(t=>t.xi===x&&(t.k==='p'||t.k==='hold')),dn=all.filter(t=>G.st.indexOf(t)<G.i).length,sp=q('gseg').children[n];
   sp.firstChild.style.width=(all.length?dn/all.length*100:0)+'%';sp.className=x===s.xi?'cur':''});
@@ -212,23 +236,26 @@ function drawG(){const s=G.st[G.i],e=S.ex[s.xi],q=id=>document.getElementById(id
 function gtick(){if(!G||G.pz)return;const s=G.st[G.i];if(s.k==='wait')return;
  const e=S.ex[s.xi],el=(performance.now()-G.t0)/1000,sec=Math.floor(el);
  if(el>=s.d){gNext();return}
- if(sec!==G.last){G.last=sec;const left=s.d-sec;
+ if(sec!==G.last){G.last=sec;const left=s.d-sec;if(s.k==='rest')document.getElementById('gc').textContent=left;
   if(sec===0&&(s.k==='p'||s.k==='hold'))cue(e,true,s.q);
   else if(s.k==='p'||left<=3)cue(e,false,0)}}
-function gNext(){const s=G.st[G.i],e=S.ex[s.xi],loud=(e.snd||'click')!=='none';
+function gNext(){const s=G.st[G.i],e=S.ex[s.xi],loud=(e.snd||'soft')!=='none';
  if(s.end){mark(e,Math.max(L(today()).done[e.id]||0,s.s+1));if(loud)beep(.6*(e.vol??40)/100)}
  else if(s.k==='rest'&&loud)beep(.6*(e.vol??40)/100);
  G.i++;if(G.i>=G.st.length){gDone();return}
  G.t0=performance.now();G.last=-1;drawG()}
-function gSkip(){const c=G.st[G.i].xi;let j=G.i+1;while(j<G.st.length&&G.st[j].xi<=c)j++;
+function gSkip(){const c=G.st[G.i];let j=G.i+1;
+ if(G.circ){const ref=c.k==='prep'&&G.st[G.i+1]?G.st[G.i+1]:c,key=t=>t.xi+'-'+(t.s??'p');while(j<G.st.length&&key(G.st[j])===key(ref))j++}
+ else while(j<G.st.length&&G.st[j].xi<=c.xi)j++;
  if(j>=G.st.length){gDone();return}
  G.i=j;G.t0=performance.now();G.last=-1;G.pz=false;document.getElementById('gp').textContent='Pause';drawG()}
 function gPause(){const b=document.getElementById('gp');
  if(!G.pz){G.pz=true;G.pe=(performance.now()-G.t0)/1000;b.textContent='Weiter'}
  else{G.t0=performance.now()-G.pe*1000;G.pz=false;b.textContent='Pause'}
  musicSync()}
-function gDone(){clearInterval(G.h);G.fin=true;stopMusic();if(S.ex.some(x=>(x.snd||'click')!=='none'))beep(.25);document.querySelector('#g .gi').innerHTML='<h2>Geschafft</h2><p class="meta">Die Sätze sind im Verlauf eingetragen.</p><button class="btn fill" style="width:100%" onclick="gEnd()">Schließen</button>'}
+function gDone(){clearInterval(G.h);G.fin=true;stopMusic();if(S.ex.some(x=>(x.snd||'soft')!=='none'))beep(.25);document.querySelector('#g .gi').innerHTML='<h2>Geschafft</h2><p class="meta">Die Sätze sind im Verlauf eingetragen.</p><button class="btn fill" style="width:100%" onclick="gEnd()">Schließen</button>'}
 function gEnd(){if(G){clearInterval(G.h);stopMusic();Object.values(G.urls).forEach(u=>URL.revokeObjectURL(u));G=null}const d=document.getElementById('g');if(d)d.remove();try{wl&&wl.release()}catch(e){}render()}
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))window.addEventListener('load',()=>{try{navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}});
 render();
 </script>
 </body>
